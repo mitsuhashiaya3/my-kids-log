@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, Timestamp, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Download, Instagram, Crown } from 'lucide-react';
@@ -15,9 +15,8 @@ const firebaseConfig = {
   appId: "1:557117667985:web:5b10a2f628fea55f525d30",
   measurementId: "G-SRSCQ4YTPE"
 };
-
 // Firebaseの初期化
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -32,8 +31,8 @@ const CATEGORIES = [
 const COLORS = ['#e94e38', '#0099cc', '#f39800', '#34a853', '#FFD100', '#8b5cf6'];
 
 // X (旧Twitter) のアイコン
-const XIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4 fill-current">
+const XIcon = ({ className }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className || "w-4 h-4 fill-current"}>
     <path d="M18.244 2.25h3.308l-7.227 7.719 8.502 11.281h-6.657l-5.203-6.817-5.967 6.817H1.611l7.73-8.256L1.145 2.25h6.828l4.695 6.148L18.244 2.25Z"></path>
   </svg>
 );
@@ -62,11 +61,12 @@ export default function App() {
     link.href = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
     document.getElementsByTagName('head')[0].appendChild(link);
 
-    if (window.htmlToImage) return;
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js";
-    script.async = true;
-    document.body.appendChild(script);
+    if (!window.htmlToImage) {
+      const script = document.createElement('script');
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
   }, []);
 
   // 認証 & データ取得
@@ -161,8 +161,8 @@ export default function App() {
       <article ref={el => cardRefs.current[quote.id] = el}
         className={`relative flex flex-col bg-white border-t-[8px] transition-all duration-700 overflow-hidden rounded-[2.5rem] shadow-[15px_15px_0px_0px_rgba(0,0,0,0.02)] border-stone-100 group ${isExporting === quote.id ? 'exporting' : ''} ${catInfo.border.replace('border-', 'border-t-')}`}>
         <div className={`absolute inset-0 opacity-[0.03] pointer-events-none rounded-2xl ${catInfo.lightBg}`}></div>
-        <div className={`flex flex-col h-full relative z-10 ${isMini ? 'p-6' : 'p-10 md:p-12'}`}>
-          <div className="flex justify-between items-center mb-6">
+        <div className={`flex flex-col h-full relative z-10 ${isMini ? 'p-6' : 'p-8 md:p-12'}`}>
+          <div className="flex justify-between items-center mb-6 pr-24 md:pr-0">
             <div className={`px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase text-white ${catInfo.bg}`}>{catInfo.label}</div>
             {isTop && <div className="flex items-center gap-1 text-[#FFD100]"><Crown className="w-4 h-4 fill-current" /><span className="text-[10px] font-black">TOP {idx + 1}</span></div>}
           </div>
@@ -187,20 +187,24 @@ export default function App() {
               <div className="text-[10px] font-bold text-stone-200 uppercase tracking-widest">{quote.createdAt?.toDate().toLocaleDateString('ja-JP').replace(/\//g, '.')}</div>
             </div>
           </div>
-          <div className="absolute top-5 right-5 flex flex-col gap-3 transition-opacity duration-300 opacity-0 group-hover:opacity-100 action-btn">
+          
+          {/* 修正：ボタンを「右上に横一行」で配置、スマホではサイズを小さく (w-8 h-8) */}
+          <div className="absolute top-4 right-4 flex flex-row-reverse gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 action-btn z-20">
             {!isConfirming ? (
               <>
-                <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-11 h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className={`w-4 h-4 ${isHearted ? 'fill-current' : ''}`} /><span className="text-[8px] font-black">{quote.heartCount || 0}</span></button>
-                <button onClick={() => setDeleteConfirmId(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
-                <button onClick={() => handleDownloadImage(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-4 h-4" /></button>
-                {/* 修正：カード上のボタンは X に戻す */}
+                <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-8 h-8 md:w-11 md:h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className="w-3 h-3 md:w-4 md:h-4 fill-current" /><span className="text-[7px] md:text-[8px] font-black">{quote.heartCount || 0}</span></button>
+                <button onClick={() => setDeleteConfirmId(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-3 h-3 md:w-4 md:h-4" /></button>
+                <button onClick={() => handleDownloadImage(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-3 h-3 md:w-4 md:h-4" /></button>
                 <button onClick={() => {
-                  const text = `#いいまつがいじてん 「${quote.content}」（意味：${quote.meaning}）`;
+                  const shareUrl = window.location.href;
+                  const text = `新たな、いいまつがいを発見！\n「${quote.content}」（意味：${quote.meaning}）\n#いいまつがいじてん\n${shareUrl}`;
                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-                }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center transition-colors"><XIcon /></button>
+                }} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center transition-colors">
+                  <XIcon className="w-3 h-3 md:w-4 md:h-4 fill-current" />
+                </button>
               </>
             ) : (
-              <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-9 h-9 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-9 h-9 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
+              <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-8 h-8 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
             )}
           </div>
         </div>
@@ -221,28 +225,31 @@ export default function App() {
         .color-bar-left { top: 0; bottom: 0; left: 0; width: 8px; flex-direction: column; }
         .color-bar-right { top: 0; bottom: 0; right: 0; width: 8px; flex-direction: column; }
         .color-segment { flex: 1; }
-        /* ロゴアニメーションをポップ＆高速化 (2.5s周期, scale1.1) */
-        .title-char { display: inline-block; animation: titleFloat 2.5s ease-in-out infinite; }
-        @keyframes titleFloat {
+        
+        .title-char { display: inline-block; animation: titlePop 2s ease-in-out infinite; }
+        @keyframes titlePop {
           0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-12px) scale(1.1); }
+          50% { transform: translateY(-15px) scale(1.15); }
         }
+        
         .fukidashi-tip { position: absolute; bottom: -12px; left: 40px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid #000; }
         .fukidashi-tip-inner { position: absolute; bottom: -9px; left: 40px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid #fff; }
         .animate-marquee { display: flex; width: max-content; animation: marquee 45s linear infinite; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
 
-      {/* カラーバーフレーム */}
       <div className="color-bar-frame color-bar-top">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-bottom">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-right">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       
       <header className="pt-24 pb-12 px-8 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12">
-        <div className="flex flex-col items-start">
-          <h1 className="text-3xl md:text-4xl font-black tracking-[0.6em] text-black">{"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.15}s` }}>{char}</span>)}</h1>
-          <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-4 uppercase tracking-[0.6em]">Shared Heart Archive</span>
+        <div className="flex flex-col items-start w-full md:w-auto">
+          {/* 🚀 修正：スマホで絶対に1行にするための調整 (text-lg sm:text-2xl) */}
+          <h1 className="text-lg sm:text-2xl md:text-4xl font-black tracking-[0.2em] sm:tracking-[0.6em] text-black whitespace-nowrap overflow-hidden">
+            {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
+          </h1>
+          <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-4 uppercase">Shared Heart Archive</span>
         </div>
         <div className="border-[2.5px] border-black rounded-[2.5rem] p-6 px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative">
           <p className="text-[9px] font-bold text-stone-400 mb-3 uppercase tracking-widest">Archive for Us</p>
@@ -295,7 +302,6 @@ export default function App() {
         <div className="mt-10 flex flex-col items-center gap-4">
           <div className="font-black text-stone-400 text-xs tracking-widest uppercase flex items-center gap-2">
             &copy; 2026 あそびラボ me-to
-            {/* 💡 Instagramリンクはここに配置 */}
             <a href="https://www.instagram.com/asobi_meto/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
               <Instagram className="w-5 h-5" />
             </a>
@@ -308,7 +314,7 @@ export default function App() {
 
 // 🚀 本番公開用のマウント処理
 const rootElement = document.getElementById('root');
-if (rootElement) {
+if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(<App />);
 }
