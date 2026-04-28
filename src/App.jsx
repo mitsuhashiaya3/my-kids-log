@@ -15,7 +15,6 @@ const firebaseConfig = {
   appId: "1:557117667985:web:5b10a2f628fea55f525d30",
   measurementId: "G-SRSCQ4YTPE"
 };
-
 // Firebaseの初期化
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
@@ -27,7 +26,6 @@ const CATEGORIES = [
   { id: 'toddler', label: '2〜3歳', bg: 'bg-[#0099cc]', border: 'border-[#0099cc]', lightBg: 'bg-[#f0f9ff]', text: 'text-[#0099cc]' },
   { id: 'pre', label: '4〜6歳', bg: 'bg-[#f39800]', border: 'border-[#f39800]', lightBg: 'bg-[#fff9e6]', text: 'text-[#f39800]' },
   { id: 'elementary', label: '小学生〜', bg: 'bg-[#34a853]', border: 'border-[#34a853]', lightBg: 'bg-[#f2faf5]', text: 'text-[#34a853]' },
-  // 🚀 「その他」を追加
   { id: 'other', label: 'その他', bg: 'bg-[#8b5cf6]', border: 'border-[#8b5cf6]', lightBg: 'bg-[#f5f3ff]', text: 'text-[#8b5cf6]' },
 ];
 
@@ -177,7 +175,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden w-full">
+    <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden w-full max-w-full">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Noto+Sans+JP:wght@900&display=swap');
         
@@ -188,6 +186,8 @@ export default function App() {
           text-rendering: optimizeLegibility;
           overflow-x: hidden;
           width: 100%;
+          margin: 0;
+          padding: 0;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -210,22 +210,24 @@ export default function App() {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
 
-      {/* 🚀 フレーム切れ対策：right-0 を確実にする */}
+      {/* カラーバー（枠切れ防止の厳密な設定） */}
       <div className="color-bar-frame color-bar-top">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-bottom">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-right">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       
-      {/* 🚀 ヘッダー：上が切れないよう余白を調整 */}
-      <header className="pt-32 sm:pt-40 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
+      {/* 🚀 ヘッダー：はみ出し対策 */}
+      <header className="pt-32 sm:pt-44 pb-12 px-4 sm:px-10 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 sm:gap-12">
         <div className="flex flex-col items-center md:items-start w-full overflow-visible">
           <h1 className="text-[8.5vw] sm:text-6xl md:text-7xl font-black tracking-tight sm:tracking-[0.3em] text-black whitespace-nowrap leading-tight">
             {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
           </h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-6 uppercase">Shared Heart Archive</span>
         </div>
-        <div className="border-[2.5px] border-black rounded-[2.5rem] p-6 px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative shrink-0">
-          <p className="text-[9px] font-bold text-stone-400 mb-3 uppercase tracking-widest">Archive for Us</p>
+        
+        {/* 🚀 はみ出し対策：w-full max-w-[320px] などを追加 */}
+        <div className="border-[2.5px] border-black rounded-[2.5rem] p-5 sm:p-6 px-8 sm:px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative shrink-0 w-full sm:w-auto max-w-[340px] sm:max-w-none mx-auto md:mx-0">
+          <p className="text-[9px] font-bold text-stone-400 mb-2 uppercase tracking-widest">Archive for Us</p>
           <p className="text-base font-black tracking-widest whitespace-nowrap">「たのしい成長」を</p>
           <p className="text-base font-black mt-1 tracking-widest whitespace-nowrap">のこそう</p>
         </div>
@@ -244,11 +246,11 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-6">
         <div className="mb-24 flex flex-col items-center md:items-start">
-          <div className="relative inline-block w-full max-w-xl md:max-w-none">
+          <div className="relative inline-block w-full max-w-xl md:max-w-none mx-auto md:mx-0">
             <div className="bg-white border-[2.5px] border-black rounded-[2.2rem] px-6 py-10 md:px-12 md:py-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.03)]">
-              <h2 className="text-[1.25rem] sm:text-2xl font-black text-black flex items-center justify-center md:justify-start gap-4 md:gap-8 tracking-widest leading-tight">
-                <Sparkles className="w-10 h-10 md:w-14 md:h-14 text-[#FFD100] shrink-0" strokeWidth={2.5} />
-                <span>あなたの大切な言葉を記録しよう</span>
+              <h2 className="text-[1.15rem] sm:text-2xl font-black text-black flex items-center justify-center md:justify-start gap-4 md:gap-8 tracking-widest leading-tight">
+                <Sparkles className="w-8 h-8 md:w-14 md:h-14 text-[#FFD100] shrink-0" strokeWidth={2.5} />
+                <span className="whitespace-normal">あなたの大切な言葉を記録しよう</span>
               </h2>
             </div>
             <div className="fukidashi-tip"></div>
@@ -278,12 +280,13 @@ export default function App() {
             <form onSubmit={handleSubmit} className="p-8 sm:p-10 space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-8">
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">時期</label><div className="grid grid-cols-2 gap-3">{CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-5 text-[11px] font-black border-2 rounded-2xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}</div></div>
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お子さまのお名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-stone-300 tracking-widest uppercase">いいまつがいした時の年齢</label>
-                    <div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">時期</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-4 text-[10px] font-black border-2 rounded-xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}
+                    </div>
                   </div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お子さまのお名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">いいまつがいした時の年齢</label><div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div></div>
                 </div>
                 <div className="space-y-8">
                   <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] tracking-widest uppercase">いいまつがい</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-40 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
@@ -307,7 +310,7 @@ export default function App() {
         <div className="mt-10 flex flex-col items-center gap-4">
           <div className="font-black text-stone-400 text-xs tracking-widest uppercase flex items-center gap-2">
             &copy; 2026 あそびラボ me-to
-            <a href="https://www.instagram.com/asobi_meto/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
+            <a href="https://www.instagram.com/asobi_labo_me_to/?hl=ja" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
               <Instagram className="w-5 h-5" />
             </a>
           </div>
