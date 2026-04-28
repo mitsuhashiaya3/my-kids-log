@@ -31,6 +31,7 @@ const CATEGORIES = [
 
 const COLORS = ['#e94e38', '#0099cc', '#f39800', '#34a853', '#FFD100', '#8b5cf6'];
 
+// X (旧Twitter) のアイコン
 const XIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className || "w-4 h-4 fill-current"}>
     <path d="M18.244 2.25h3.308l-7.227 7.719 8.502 11.281h-6.657l-5.203-6.817-5.967 6.817H1.611l7.73-8.256L1.145 2.25h6.828l4.695 6.148L18.244 2.25Z"></path>
@@ -52,6 +53,7 @@ export default function App() {
     name: '', category: 'toddler', ageYears: '2', ageMonths: '0', content: '', meaning: '', context: ''
   });
 
+  // SVGファビコンとライブラリ読み込み
   useEffect(() => {
     const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#FF5A5F"/><path d="M30 45 Q30 30 50 30 Q70 30 70 45 Q70 60 55 60 L45 75 L45 60 Q30 60 30 45" fill="white"/><circle cx="42" cy="45" r="3" fill="#FF5A5F"/><circle cx="58" cy="45" r="3" fill="#FF5A5F"/></svg>`;
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
@@ -68,6 +70,7 @@ export default function App() {
     }
   }, []);
 
+  // 認証 & データ取得
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -119,6 +122,7 @@ export default function App() {
     } catch (e) { console.error(e); showStatus('保存に失敗しました'); }
   };
 
+  // 画像保存の強化版
   const handleDownloadImage = async (id) => {
     if (!window.htmlToImage) {
       showStatus('準備中...もう一度押してください');
@@ -134,29 +138,30 @@ export default function App() {
       if (document.fonts) {
         await document.fonts.ready;
       }
-      // 描画待機を1.5秒に延長
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // スマホ向けの待機時間を長めに設定
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const blob = await window.htmlToImage.toBlob(element, {
+      const dataUrl = await window.htmlToImage.toPng(element, {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
         cacheBust: true,
-        skipFonts: false
+        style: {
+          transform: 'scale(1)',
+          borderRadius: '2.5rem'
+        }
       });
 
-      if (!blob || blob.size < 2000) {
-        throw new Error('Image generation resulted in empty blob');
+      if (!dataUrl || dataUrl.length < 5000) {
+        throw new Error('Image data invalid');
       }
 
-      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `kids-log-${id}.png`;
-      link.href = url;
+      link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       showStatus('保存しました！');
     } catch (err) {
       console.error('Save error:', err);
@@ -273,7 +278,6 @@ export default function App() {
       <header className="pt-36 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
         <div className="flex flex-col items-center md:items-start w-full">
           <h1 className="text-[8.5vw] sm:text-5xl md:text-7xl font-black tracking-tight sm:tracking-[0.3em] text-black whitespace-nowrap leading-tight">
-            {/* 🚀 修正： animationDelay の指定ミス（`${i * 0.1s}` -> `${i * 0.1}s`）を解消 */}
             {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
           </h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-6 uppercase">Shared Heart Archive</span>
@@ -334,7 +338,11 @@ export default function App() {
                 <div className="space-y-8">
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">時期</label><div className="grid grid-cols-2 gap-3">{CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-5 text-[11px] font-black border-2 rounded-2xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}</div></div>
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お子さまのお名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">年齢</label><div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div></div>
+                  <div className="space-y-3">
+                    {/* 🚀 修正：ラベルを「いいまつがいした時の年齢」に変更 */}
+                    <label className="text-xs font-black text-stone-300 tracking-widest uppercase">いいまつがいした時の年齢</label>
+                    <div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div>
+                  </div>
                 </div>
                 <div className="space-y-8">
                   <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] tracking-widest uppercase">いいまつがい</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-40 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
@@ -358,7 +366,7 @@ export default function App() {
         <div className="mt-10 flex flex-col items-center gap-4">
           <div className="font-black text-stone-400 text-xs tracking-widest uppercase flex items-center gap-2">
             &copy; 2026 あそびラボ me-to
-            <a href="https://www.instagram.com/asobi_meto/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
+            <a href="https://www.instagram.com/asobi_labo_me_to/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
               <Instagram className="w-5 h-5" />
             </a>
           </div>
