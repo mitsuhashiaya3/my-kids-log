@@ -15,6 +15,7 @@ const firebaseConfig = {
   appId: "1:557117667985:web:5b10a2f628fea55f525d30",
   measurementId: "G-SRSCQ4YTPE"
 };
+
 // Firebaseの初期化
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
@@ -188,7 +189,6 @@ export default function App() {
             </div>
           </div>
           
-          {/* 修正：ボタンを「右上に横一行」で配置、スマホではサイズを小さく (w-8 h-8) */}
           <div className="absolute top-4 right-4 flex flex-row-reverse gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 action-btn z-20">
             {!isConfirming ? (
               <>
@@ -197,6 +197,7 @@ export default function App() {
                 <button onClick={() => handleDownloadImage(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-3 h-3 md:w-4 md:h-4" /></button>
                 <button onClick={() => {
                   const shareUrl = window.location.href;
+                  // 🚀 Xシェア文言を理想の形に修正
                   const text = `新たな、いいまつがいを発見！\n「${quote.content}」（意味：${quote.meaning}）\n#いいまつがいじてん\n${shareUrl}`;
                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                 }} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center transition-colors">
@@ -216,7 +217,16 @@ export default function App() {
     <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Noto+Sans+JP:wght@400;700;900&display=swap');
-        body { font-family: 'Noto Sans JP', sans-serif; }
+        
+        /* 🚀 デスクトップChromeでもクッキリ太く見せる設定 */
+        body { 
+          font-family: 'Noto Sans JP', sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
+          letter-spacing: -0.02em;
+        }
+
         .exporting .action-btn { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .color-bar-frame { position: fixed; z-index: 100; display: flex; }
@@ -245,8 +255,8 @@ export default function App() {
       
       <header className="pt-24 pb-12 px-8 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12">
         <div className="flex flex-col items-start w-full md:w-auto">
-          {/* 🚀 修正：スマホで絶対に1行にするための調整 (text-lg sm:text-2xl) */}
-          <h1 className="text-lg sm:text-2xl md:text-4xl font-black tracking-[0.2em] sm:tracking-[0.6em] text-black whitespace-nowrap overflow-hidden">
+          {/* 🚀 スマホで絶対に1行にするための調整 */}
+          <h1 className="text-lg sm:text-2xl md:text-4xl font-black tracking-tight sm:tracking-[0.6em] text-black whitespace-nowrap overflow-hidden">
             {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
           </h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-4 uppercase">Shared Heart Archive</span>
