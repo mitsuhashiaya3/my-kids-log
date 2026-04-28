@@ -20,6 +20,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// カテゴリー設定
 const CATEGORIES = [
   { id: 'all', label: 'すべて', bg: 'bg-[#1a1a1a]', border: 'border-stone-800', lightBg: 'bg-stone-50', text: 'text-stone-800' },
   { id: 'baby', label: '0〜1歳', bg: 'bg-[#e94e38]', border: 'border-[#e94e38]', lightBg: 'bg-[#fff5f4]', text: 'text-[#e94e38]' },
@@ -45,6 +46,7 @@ export default function App() {
     name: '', category: 'toddler', ageYears: '2', ageMonths: '0', content: '', meaning: '', context: ''
   });
 
+  // 画像保存ライブラリ読み込み
   useEffect(() => {
     if (window.htmlToImage) return;
     const script = document.createElement('script');
@@ -53,6 +55,7 @@ export default function App() {
     document.body.appendChild(script);
   }, []);
 
+  // Auth & Firestore接続
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -121,6 +124,7 @@ export default function App() {
   const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 3000); };
 
   const filteredQuotes = useMemo(() => filter === 'all' ? quotes : quotes.filter(q => q.category === filter), [quotes, filter]);
+  const visibleQuotes = useMemo(() => filteredQuotes.slice(0, displayCount), [filteredQuotes, displayCount]);
   const top10Quotes = useMemo(() => [...quotes].filter(q => (q.heartCount || 0) > 0).sort((a, b) => (b.heartCount || 0) - (a.heartCount || 0)).slice(0, 10), [quotes]);
 
   const QuoteCard = ({ quote, idx, isTop = false, isMini = false }) => {
@@ -179,10 +183,10 @@ export default function App() {
         .exporting .action-btn { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .color-bar-frame { position: fixed; z-index: 100; display: flex; }
-        .color-bar-top { top: 0; left: 0; right: 0; height: 6px; }
-        .color-bar-bottom { bottom: 0; left: 0; right: 0; height: 6px; }
-        .color-bar-left { top: 0; bottom: 0; left: 0; width: 6px; flex-direction: column; }
-        .color-bar-right { top: 0; bottom: 0; right: 0; width: 6px; flex-direction: column; }
+        .color-bar-top { top: 0; left: 0; right: 0; height: 8px; }
+        .color-bar-bottom { bottom: 0; left: 0; right: 0; height: 8px; }
+        .color-bar-left { top: 0; bottom: 0; left: 0; width: 8px; flex-direction: column; }
+        .color-bar-right { top: 0; bottom: 0; right: 0; width: 8px; flex-direction: column; }
         .color-segment { flex: 1; }
         .animate-marquee { display: flex; width: max-content; animation: marquee 45s linear infinite; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -192,7 +196,7 @@ export default function App() {
         .fukidashi-tip-inner { position: absolute; bottom: -9px; left: 40px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid #fff; }
       `}</style>
 
-      {/* 4辺カラーフレーム */}
+      {/* 4辺カラーフレーム（20:20:17のデザイン） */}
       <div className="color-bar-frame color-bar-top">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-bottom">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
@@ -209,12 +213,14 @@ export default function App() {
       <div className="sticky top-0 z-40 bg-[#FCFAF7]/80 backdrop-blur-md border-y border-stone-100 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-5 flex justify-center items-center gap-6"><span className="text-[10px] font-black tracking-widest text-stone-300">FILTER</span><nav className="flex gap-4 overflow-x-auto no-scrollbar">{CATEGORIES.map(cat => (<button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-8 py-3 rounded-full text-xs font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-black hover:text-black`}`}>{cat.label}</button>))}</nav></div></div>
 
       <main className="max-w-7xl mx-auto px-8 py-20">
+        {/* 20:20:17の巨大吹き出し */}
         <div className="mb-24 flex flex-col items-center md:items-start"><div className="relative inline-block"><div className="bg-white border-[2.5px] border-black rounded-[2.2rem] px-12 py-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.03)]"><h2 className="text-2xl font-black text-black flex items-center gap-6 tracking-widest"><Sparkles className="w-6 h-6 text-[#FFD100]" />あなたの大切な言葉を記録しよう</h2></div><div className="fukidashi-tip"></div><div className="fukidashi-tip-inner"></div></div></div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">{filteredQuotes.slice(0, displayCount).map((quote, idx) => <QuoteCard key={quote.id} quote={quote} idx={idx} />)}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">{visibleQuotes.map((quote, idx) => <QuoteCard key={quote.id} quote={quote} idx={idx} />)}</div>
         {filteredQuotes.length > displayCount && <div className="flex justify-center mt-20"><button onClick={() => setDisplayCount(prev => prev + 12)} className="bg-white border-2 border-stone-100 px-16 py-6 rounded-full font-black text-stone-400 hover:border-black hover:text-black transition-all tracking-widest">もっと見る</button></div>}
       </main>
 
+      {/* 20:20:17の追加ボタン */}
       <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest uppercase mt-1">追加する</span></button>
 
       {isModalOpen && (
@@ -252,11 +258,9 @@ export default function App() {
   );
 }
 
-// 本番サーバー（Vite）用レンダリング命令
-if (typeof window !== 'undefined' && !window.__is_preview) {
-  const rootElement = document.getElementById('root');
-  if (rootElement) {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(<App />);
-  }
+// --- 🚀 本番公開用（Viteサーバー等）の表示命令 ---
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
 }
