@@ -15,7 +15,8 @@ const firebaseConfig = {
   appId: "1:557117667985:web:5b10a2f628fea55f525d30",
   measurementId: "G-SRSCQ4YTPE"
 };
-// Firebaseの初期化
+
+// Firebaseの初期化（二重初期化を防止）
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -81,7 +82,6 @@ export default function App() {
         return () => unsubscribe();
       } catch (e) {
         console.error("Auth Error:", e);
-        showStatus('匿名ログインを有効にしてください');
       }
     };
     initApp();
@@ -106,7 +106,7 @@ export default function App() {
       return;
     }
     if (!newQuote.content || !newQuote.meaning || !newQuote.name) {
-      showStatus('「お名前」「いいまつがい」「意味」を入力してください');
+      showStatus('必須項目を入力してください');
       return;
     }
     try {
@@ -120,37 +120,50 @@ export default function App() {
   };
 
   const handleDownloadImage = async (id) => {
-    if (!window.htmlToImage) return;
+    if (!window.htmlToImage) {
+      showStatus('準備中...もう一度押してください');
+      return;
+    }
     const element = cardRefs.current[id];
     if (!element) return;
+
     setIsExporting(id);
     showStatus('画像を生成中...');
-    try {
-      if (document.fonts) await document.fonts.ready;
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const dataUrl = await window.htmlToImage.toPng(element, { 
-        backgroundColor: '#ffffff', 
-        pixelRatio: 2, 
-        cacheBust: true,
-        style: {
-          transform: 'scale(1)',
-        }
-      });
-      
-      if (!dataUrl || dataUrl.length < 1000) throw new Error('Generation failed');
 
+    try {
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+      // 描画待機を1.5秒に延長
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const blob = await window.htmlToImage.toBlob(element, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        cacheBust: true,
+        skipFonts: false
+      });
+
+      if (!blob || blob.size < 2000) {
+        throw new Error('Image generation resulted in empty blob');
+      }
+
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `iimatsugai-${id}.png`;
-      link.href = dataUrl;
+      link.download = `kids-log-${id}.png`;
+      link.href = url;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       showStatus('保存しました！');
-    } catch (err) { 
-      console.error(err); 
-      showStatus('保存に失敗しました。もう一度お試しください'); 
-    } finally { setIsExporting(null); }
+    } catch (err) {
+      console.error('Save error:', err);
+      showStatus('保存に失敗しました。もう一度試してください');
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 4000); };
@@ -180,18 +193,17 @@ export default function App() {
             {quote.meaning && (
               <div className={`p-4 rounded-2xl border-2 flex items-center gap-4 ${catInfo.lightBg} ${catInfo.border}`}>
                 <ArrowRight className={`w-4 h-4 shrink-0 ${catInfo.text}`} strokeWidth={4} />
-                <span className="font-black tracking-widest text-stone-800 leading-tight">{quote.meaning}</span>
+                <span className="font-black tracking-widest text-stone-800 leading-tight text-base">{quote.meaning}</span>
               </div>
             )}
           </div>
           {!isMini && quote.context && <div className="mb-8 p-5 bg-stone-50/50 rounded-2xl border-l-4 border-stone-100 text-sm text-stone-500 tracking-wide leading-relaxed">{quote.context}</div>}
           <div className="pt-6 border-t border-stone-50 flex items-end justify-between">
             <div className="space-y-1"><span className="text-[10px] font-black text-stone-200 block uppercase tracking-widest">Name</span>
-              {/* 🚀 下線を復活 */}
-              <span className="text-lg font-black tracking-widest text-stone-900 border-b-2 border-stone-100">{quote.name || 'ななしさん'}</span></div>
+              <span className="text-lg font-black tracking-widest text-stone-900 border-b-2 border-stone-100 pb-0.5">{quote.name || 'ななしさん'}</span>
+            </div>
             <div className="text-right space-y-0.5">
-              {/* 🚀 下線を復活 */}
-              <div className="flex items-baseline justify-end gap-1 font-black text-xl tracking-tighter border-b-2 border-stone-100">
+              <div className="flex items-baseline justify-end gap-1 font-black text-xl tracking-tighter border-b-2 border-stone-100 pb-0.5">
                 <span className={catInfo.text}>{quote.ageYears}</span><span className="text-[12px] text-stone-200">歳</span>
                 <span className={`${catInfo.text} ml-1`}>{quote.ageMonths}</span><span className="text-[12px] text-stone-200">ヶ月</span>
               </div>
@@ -201,14 +213,14 @@ export default function App() {
           <div className="absolute top-4 right-4 flex flex-row-reverse gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 action-btn z-20">
             {!isConfirming ? (
               <>
-                <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-8 h-8 md:w-11 md:h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className="w-3 h-3 md:w-4 md:h-4 fill-current" /><span className="text-[7px] md:text-[8px] font-black">{quote.heartCount || 0}</span></button>
-                <button onClick={() => setDeleteConfirmId(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-3 h-3 md:w-4 md:h-4" /></button>
-                <button onClick={() => handleDownloadImage(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-3 h-3 md:w-4 md:h-4" /></button>
+                <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-8 h-8 md:w-11 md:h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" /><span className="text-[7px] md:text-[8px] font-black">{quote.heartCount || 0}</span></button>
+                <button onClick={() => setDeleteConfirmId(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
+                <button onClick={() => handleDownloadImage(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
                 <button onClick={() => {
                   const shareUrl = window.location.href;
                   const text = `新たな、いいまつがいを発見！\n「${quote.content}」（意味：${quote.meaning}）\n#いいまつがいじてん\n${shareUrl}`;
                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-                }} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center transition-colors"><XIcon className="w-3 h-3 md:w-4 md:h-4 fill-current" /></button>
+                }} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center transition-colors"><XIcon className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" /></button>
               </>
             ) : (
               <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-8 h-8 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
@@ -243,7 +255,7 @@ export default function App() {
         .title-char { display: inline-block; animation: titlePop 2s ease-in-out infinite; }
         @keyframes titlePop {
           0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-8px) scale(1.08); }
+          50% { transform: translateY(-6px) scale(1.05); }
         }
         
         .fukidashi-tip { position: absolute; bottom: -12px; left: 40px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid #000; }
@@ -258,17 +270,18 @@ export default function App() {
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-right">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       
-      <header className="pt-32 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
+      <header className="pt-36 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
         <div className="flex flex-col items-center md:items-start w-full">
-          <h1 className="text-[8vw] sm:text-5xl md:text-6xl font-black tracking-tighter sm:tracking-[0.3em] text-black whitespace-nowrap leading-none">
+          <h1 className="text-[8.5vw] sm:text-5xl md:text-7xl font-black tracking-tight sm:tracking-[0.3em] text-black whitespace-nowrap leading-tight">
+            {/* 🚀 修正： animationDelay の指定ミス（`${i * 0.1s}` -> `${i * 0.1}s`）を解消 */}
             {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
           </h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-6 uppercase">Shared Heart Archive</span>
         </div>
         <div className="border-[2.5px] border-black rounded-[2.5rem] p-6 px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative shrink-0">
           <p className="text-[9px] font-bold text-stone-400 mb-3 uppercase tracking-widest">Archive for Us</p>
-          <p className="text-base font-black tracking-widest">「たのしい成長」を</p>
-          <p className="text-base font-black mt-1 tracking-widest">のこそう</p>
+          <p className="text-base font-black tracking-widest whitespace-nowrap">「たのしい成長」を</p>
+          <p className="text-base font-black mt-1 tracking-widest whitespace-nowrap">のこそう</p>
         </div>
       </header>
 
@@ -277,7 +290,7 @@ export default function App() {
           <span className="hidden sm:inline text-[10px] font-black tracking-widest text-stone-300 uppercase">絞り込み</span>
           <nav className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {CATEGORIES.map(cat => (
-              <button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-6 py-3 rounded-full text-[11px] font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-stone-400`}`}>{cat.label}</button>
+              <button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-6 py-3 rounded-full text-[11px] font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-black hover:text-black`}`}>{cat.label}</button>
             ))}
           </nav>
         </div>
@@ -286,9 +299,9 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6">
         <div className="mb-24 flex flex-col items-center md:items-start">
           <div className="relative inline-block w-full max-w-xl md:max-w-none">
-            <div className="bg-white border-[2.5px] border-black rounded-[2.2rem] px-6 py-8 md:px-12 md:py-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.03)]">
+            <div className="bg-white border-[2.5px] border-black rounded-[2.2rem] px-6 py-10 md:px-12 md:py-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.03)]">
               <h2 className="text-[1.25rem] sm:text-2xl font-black text-black flex items-center justify-center md:justify-start gap-4 md:gap-8 tracking-widest leading-tight">
-                <Sparkles className="w-10 h-10 md:w-12 md:h-12 text-[#FFD100] shrink-0" strokeWidth={2.5} />
+                <Sparkles className="w-10 h-10 md:w-14 md:h-14 text-[#FFD100] shrink-0" strokeWidth={2.5} />
                 <span>あなたの大切な言葉を記録しよう</span>
               </h2>
             </div>
