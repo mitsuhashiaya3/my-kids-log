@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, Timestamp, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Download, Instagram, Crown } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Instagram, Crown } from 'lucide-react';
 
 // --- 🔑 重要：ここをご自身のFirebase設定に書き換えてください ---
 const firebaseConfig = {
@@ -16,7 +16,7 @@ const firebaseConfig = {
   measurementId: "G-SRSCQ4YTPE"
 };
 
-// Firebaseの初期化（二重初期化を防止）
+// Firebaseの初期化
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -27,11 +27,12 @@ const CATEGORIES = [
   { id: 'toddler', label: '2〜3歳', bg: 'bg-[#0099cc]', border: 'border-[#0099cc]', lightBg: 'bg-[#f0f9ff]', text: 'text-[#0099cc]' },
   { id: 'pre', label: '4〜6歳', bg: 'bg-[#f39800]', border: 'border-[#f39800]', lightBg: 'bg-[#fff9e6]', text: 'text-[#f39800]' },
   { id: 'elementary', label: '小学生〜', bg: 'bg-[#34a853]', border: 'border-[#34a853]', lightBg: 'bg-[#f2faf5]', text: 'text-[#34a853]' },
+  // 🚀 「その他」を追加
+  { id: 'other', label: 'その他', bg: 'bg-[#8b5cf6]', border: 'border-[#8b5cf6]', lightBg: 'bg-[#f5f3ff]', text: 'text-[#8b5cf6]' },
 ];
 
 const COLORS = ['#e94e38', '#0099cc', '#f39800', '#34a853', '#FFD100', '#8b5cf6'];
 
-// X (旧Twitter) のアイコン
 const XIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className || "w-4 h-4 fill-current"}>
     <path d="M18.244 2.25h3.308l-7.227 7.719 8.502 11.281h-6.657l-5.203-6.817-5.967 6.817H1.611l7.73-8.256L1.145 2.25h6.828l4.695 6.148L18.244 2.25Z"></path>
@@ -44,16 +45,13 @@ export default function App() {
   const [filter, setFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [isExporting, setIsExporting] = useState(null);
   const [displayCount, setDisplayCount] = useState(12);
   const [statusMessage, setStatusMessage] = useState('');
-  const cardRefs = useRef({});
 
   const [newQuote, setNewQuote] = useState({
     name: '', category: 'toddler', ageYears: '2', ageMonths: '0', content: '', meaning: '', context: ''
   });
 
-  // SVGファビコンとライブラリ読み込み
   useEffect(() => {
     const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#FF5A5F"/><path d="M30 45 Q30 30 50 30 Q70 30 70 45 Q70 60 55 60 L45 75 L45 60 Q30 60 30 45" fill="white"/><circle cx="42" cy="45" r="3" fill="#FF5A5F"/><circle cx="58" cy="45" r="3" fill="#FF5A5F"/></svg>`;
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
@@ -61,16 +59,8 @@ export default function App() {
     link.rel = 'icon';
     link.href = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
     document.getElementsByTagName('head')[0].appendChild(link);
-
-    if (!window.htmlToImage) {
-      const script = document.createElement('script');
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
   }, []);
 
-  // 認証 & データ取得
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -122,55 +112,6 @@ export default function App() {
     } catch (e) { console.error(e); showStatus('保存に失敗しました'); }
   };
 
-  // 画像保存の強化版
-  const handleDownloadImage = async (id) => {
-    if (!window.htmlToImage) {
-      showStatus('準備中...もう一度押してください');
-      return;
-    }
-    const element = cardRefs.current[id];
-    if (!element) return;
-
-    setIsExporting(id);
-    showStatus('画像を生成中...');
-
-    try {
-      if (document.fonts) {
-        await document.fonts.ready;
-      }
-      // スマホ向けの待機時間を長めに設定
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const dataUrl = await window.htmlToImage.toPng(element, {
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        cacheBust: true,
-        style: {
-          transform: 'scale(1)',
-          borderRadius: '2.5rem'
-        }
-      });
-
-      if (!dataUrl || dataUrl.length < 5000) {
-        throw new Error('Image data invalid');
-      }
-
-      const link = document.createElement('a');
-      link.download = `kids-log-${id}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      showStatus('保存しました！');
-    } catch (err) {
-      console.error('Save error:', err);
-      showStatus('保存に失敗しました。もう一度試してください');
-    } finally {
-      setIsExporting(null);
-    }
-  };
-
   const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 4000); };
 
   const filteredQuotes = useMemo(() => filter === 'all' ? quotes : quotes.filter(q => q.category === filter), [quotes, filter]);
@@ -182,11 +123,11 @@ export default function App() {
     const isHearted = user && (quote.heartedBy || []).includes(user.uid);
     const isConfirming = deleteConfirmId === quote.id;
     return (
-      <article ref={el => cardRefs.current[quote.id] = el}
-        className={`relative flex flex-col bg-white border-t-[8px] transition-all duration-700 overflow-hidden rounded-[2.5rem] shadow-[15px_15px_0px_0px_rgba(0,0,0,0.02)] border-stone-100 group ${isExporting === quote.id ? 'exporting' : ''} ${catInfo.border.replace('border-', 'border-t-')}`}>
+      <article
+        className={`relative flex flex-col bg-white border-t-[8px] transition-all duration-700 overflow-hidden rounded-[2.5rem] shadow-[15px_15px_0px_0px_rgba(0,0,0,0.02)] border-stone-100 group ${catInfo.border.replace('border-', 'border-t-')}`}>
         <div className={`absolute inset-0 opacity-[0.03] pointer-events-none rounded-2xl ${catInfo.lightBg}`}></div>
         <div className={`flex flex-col h-full relative z-10 ${isMini ? 'p-6' : 'p-8 md:p-12'}`}>
-          <div className="flex justify-between items-center mb-6 pr-24 md:pr-0">
+          <div className="flex justify-between items-center mb-6 pr-16 md:pr-0">
             <div className={`px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase text-white ${catInfo.bg}`}>{catInfo.label}</div>
             {isTop && <div className="flex items-center gap-1 text-[#FFD100]"><Crown className="w-4 h-4 fill-current" /><span className="text-[10px] font-black">TOP {idx + 1}</span></div>}
           </div>
@@ -220,7 +161,6 @@ export default function App() {
               <>
                 <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-8 h-8 md:w-11 md:h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" /><span className="text-[7px] md:text-[8px] font-black">{quote.heartCount || 0}</span></button>
                 <button onClick={() => setDeleteConfirmId(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
-                <button onClick={() => handleDownloadImage(quote.id)} className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
                 <button onClick={() => {
                   const shareUrl = window.location.href;
                   const text = `新たな、いいまつがいを発見！\n「${quote.content}」（意味：${quote.meaning}）\n#いいまつがいじてん\n${shareUrl}`;
@@ -237,7 +177,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden w-full">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Noto+Sans+JP:wght@900&display=swap');
         
@@ -246,11 +186,12 @@ export default function App() {
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
           text-rendering: optimizeLegibility;
+          overflow-x: hidden;
+          width: 100%;
         }
 
-        .exporting .action-btn { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .color-bar-frame { position: fixed; z-index: 100; display: flex; }
+        .color-bar-frame { position: fixed; z-index: 100; display: flex; pointer-events: none; }
         .color-bar-top { top: 0; left: 0; right: 0; height: 10px; }
         .color-bar-bottom { bottom: 0; left: 0; right: 0; height: 10px; }
         .color-bar-left { top: 0; bottom: 0; left: 0; width: 10px; flex-direction: column; }
@@ -269,15 +210,16 @@ export default function App() {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
 
-      {/* カラーバー */}
+      {/* 🚀 フレーム切れ対策：right-0 を確実にする */}
       <div className="color-bar-frame color-bar-top">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-bottom">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-right">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       
-      <header className="pt-36 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
-        <div className="flex flex-col items-center md:items-start w-full">
-          <h1 className="text-[8.5vw] sm:text-5xl md:text-7xl font-black tracking-tight sm:tracking-[0.3em] text-black whitespace-nowrap leading-tight">
+      {/* 🚀 ヘッダー：上が切れないよう余白を調整 */}
+      <header className="pt-32 sm:pt-40 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
+        <div className="flex flex-col items-center md:items-start w-full overflow-visible">
+          <h1 className="text-[8.5vw] sm:text-6xl md:text-7xl font-black tracking-tight sm:tracking-[0.3em] text-black whitespace-nowrap leading-tight">
             {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
           </h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-6 uppercase">Shared Heart Archive</span>
@@ -339,7 +281,6 @@ export default function App() {
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">時期</label><div className="grid grid-cols-2 gap-3">{CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-5 text-[11px] font-black border-2 rounded-2xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}</div></div>
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お子さまのお名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
                   <div className="space-y-3">
-                    {/* 🚀 修正：ラベルを「いいまつがいした時の年齢」に変更 */}
                     <label className="text-xs font-black text-stone-300 tracking-widest uppercase">いいまつがいした時の年齢</label>
                     <div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none text-center" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div>
                   </div>
@@ -366,7 +307,7 @@ export default function App() {
         <div className="mt-10 flex flex-col items-center gap-4">
           <div className="font-black text-stone-400 text-xs tracking-widest uppercase flex items-center gap-2">
             &copy; 2026 あそびラボ me-to
-            <a href="https://www.instagram.com/asobi_labo_me_to/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
+            <a href="https://www.instagram.com/asobi_meto/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
               <Instagram className="w-5 h-5" />
             </a>
           </div>
