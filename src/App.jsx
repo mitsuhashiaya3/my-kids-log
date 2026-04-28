@@ -3,9 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, Timestamp, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Download, Instagram, Crown, MessageCircle } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Download, Instagram, Crown } from 'lucide-react';
 
-// --- 🔑 重要：ここをご自身のFirebase設定（19.04.14.jpgの内容）に書き換えてください ---
+// --- 🔑 重要：ここをご自身のFirebase設定に書き換えてください ---
 const firebaseConfig = {
   apiKey: "AIzaSyBfmHKWKWKUdNu5oyUALH2W5fQGtHT7ShA",
   authDomain: "iimatsugai-jiten.firebaseapp.com",
@@ -16,6 +16,7 @@ const firebaseConfig = {
   measurementId: "G-SRSCQ4YTPE"
 };
 
+// Firebaseの初期化
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -29,6 +30,13 @@ const CATEGORIES = [
 ];
 
 const COLORS = ['#e94e38', '#0099cc', '#f39800', '#34a853', '#FFD100', '#8b5cf6'];
+
+// X (旧Twitter) のアイコン
+const XIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4 fill-current">
+    <path d="M18.244 2.25h3.308l-7.227 7.719 8.502 11.281h-6.657l-5.203-6.817-5.967 6.817H1.611l7.73-8.256L1.145 2.25h6.828l4.695 6.148L18.244 2.25Z"></path>
+  </svg>
+);
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -45,18 +53,9 @@ export default function App() {
     name: '', category: 'toddler', ageYears: '2', ageMonths: '0', content: '', meaning: '', context: ''
   });
 
-  // SVGファビコンとライブラリの設定
+  // SVGファビコンとライブラリ読み込み
   useEffect(() => {
-    // --- 💡 SVGファビコンを動的に設定（アイコン：赤い吹き出し） ---
-    const faviconSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <rect width="100" height="100" rx="20" fill="#FF5A5F"/>
-        <path d="M30 45 Q30 30 50 30 Q70 30 70 45 Q70 60 55 60 L45 75 L45 60 Q30 60 30 45" fill="white"/>
-        <circle cx="42" cy="45" r="3" fill="#FF5A5F"/>
-        <circle cx="58" cy="45" r="3" fill="#FF5A5F"/>
-      </svg>
-    `.trim();
-    
+    const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#FF5A5F"/><path d="M30 45 Q30 30 50 30 Q70 30 70 45 Q70 60 55 60 L45 75 L45 60 Q30 60 30 45" fill="white"/><circle cx="42" cy="45" r="3" fill="#FF5A5F"/><circle cx="58" cy="45" r="3" fill="#FF5A5F"/></svg>`;
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/svg+xml';
     link.rel = 'icon';
@@ -70,27 +69,25 @@ export default function App() {
     document.body.appendChild(script);
   }, []);
 
-  // Auth & Firestore接続
+  // 認証 & データ取得
   useEffect(() => {
-    const initAuth = async () => {
+    const initApp = async () => {
       try {
-        await signInAnonymously(auth);
-      } catch (e) { console.error("Auth error:", e); }
-    };
-    initAuth();
-    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (u) {
+        const result = await signInAnonymously(auth);
+        setUser(result.user);
         const q = collection(db, 'quotes');
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
           const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
           setQuotes(data);
-        }, (err) => console.error("Firestore error:", err));
-        return () => unsubscribeSnapshot();
+        });
+        return () => unsubscribe();
+      } catch (e) {
+        console.error("Auth Error:", e);
+        showStatus('匿名ログインを有効にしてください');
       }
-    });
-    return () => unsubscribeAuth();
+    };
+    initApp();
   }, []);
 
   const handleHeart = async (id, currentHearts = []) => {
@@ -108,12 +105,11 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      showStatus('認証中です。もう一度お試しください');
+      showStatus('認証待ちです...');
       return;
     }
-    // エピソード(context)は任意、それ以外は必須
     if (!newQuote.content || !newQuote.meaning || !newQuote.name) {
-      showStatus('「お名前」「内容」「意味」をすべて入力してください');
+      showStatus('「お名前」「内容」「意味」を入力してください');
       return;
     }
     try {
@@ -151,7 +147,7 @@ export default function App() {
     }, 500);
   };
 
-  const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 3000); };
+  const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 4000); };
 
   const filteredQuotes = useMemo(() => filter === 'all' ? quotes : quotes.filter(q => q.category === filter), [quotes, filter]);
   const visibleQuotes = useMemo(() => filteredQuotes.slice(0, displayCount), [filteredQuotes, displayCount]);
@@ -183,7 +179,6 @@ export default function App() {
             )}
           </div>
           {!isMini && quote.context && <div className="mb-8 p-5 bg-stone-50/50 rounded-2xl border-l-4 border-stone-100 text-sm text-stone-500 tracking-wide leading-relaxed">{quote.context}</div>}
-          
           <div className="pt-6 border-t border-stone-50 flex items-end justify-between">
             <div className="space-y-1"><span className="text-[10px] font-black text-stone-200 block uppercase tracking-widest">Name</span><span className="text-lg font-black tracking-widest text-stone-900 border-b-2 border-stone-100">{quote.name || 'ななしさん'}</span></div>
             <div className="text-right space-y-0.5">
@@ -197,7 +192,11 @@ export default function App() {
                 <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-11 h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className={`w-4 h-4 ${isHearted ? 'fill-current' : ''}`} /><span className="text-[8px] font-black">{quote.heartCount || 0}</span></button>
                 <button onClick={() => setDeleteConfirmId(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
                 <button onClick={() => handleDownloadImage(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-4 h-4" /></button>
-                <button onClick={() => { window.open('https://instagram.com', '_blank') }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-fuchsia-500 flex items-center justify-center transition-colors"><Instagram className="w-4 h-4" /></button>
+                {/* 修正：X (旧Twitter) ボタンに戻す */}
+                <button onClick={() => {
+                  const text = `#いいまつがいじてん 「${quote.content}」（意味：${quote.meaning}）`;
+                  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center"><XIcon /></button>
               </>
             ) : (
               <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-9 h-9 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-9 h-9 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
@@ -229,7 +228,7 @@ export default function App() {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
 
-      {/* 4辺カラーフレーム（20:20:17のデザイン） */}
+      {/* デザイン復元：4辺フレーム */}
       <div className="color-bar-frame color-bar-top">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-bottom">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
@@ -252,8 +251,7 @@ export default function App() {
         {filteredQuotes.length > displayCount && <div className="flex justify-center mt-20"><button onClick={() => setDisplayCount(prev => prev + 12)} className="bg-white border-2 border-stone-100 px-16 py-6 rounded-full font-black text-stone-400 hover:border-black hover:text-black transition-all tracking-widest">もっと見る</button></div>}
       </main>
 
-      {/* 追加ボタン */}
-      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest mt-1">追加する</span></button>
+      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest mt-1 uppercase">きろく</span></button>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xl flex items-center justify-center z-[60] p-6 overflow-y-auto">
@@ -267,9 +265,8 @@ export default function App() {
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">年齢</label><div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div></div>
                 </div>
                 <div className="space-y-8">
-                  <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] tracking-widest uppercase">いいまつがい</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-48 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] tracking-widest uppercase">いいまつがい</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-40 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
                   <div className="space-y-3"><label className="text-xs font-black text-[#0099cc] tracking-widest uppercase">ほんとうの意味</label><input required type="text" placeholder="意味..." className="w-full border-b-2 p-4 text-xl font-black focus:border-[#0099cc] outline-none transition-colors" value={newQuote.meaning} onChange={e => setNewQuote({...newQuote, meaning: e.target.value})} /></div>
-                  {/* --- エピソード（背景）入力欄を配置 --- */}
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">エピソード（背景）</label><textarea placeholder="どんな時に言った？（任意）" className="w-full bg-stone-50 border-2 rounded-2xl p-4 text-sm font-medium focus:bg-white outline-none h-24 resize-none transition-all" value={newQuote.context} onChange={e => setNewQuote({...newQuote, context: e.target.value})} /></div>
                 </div>
               </div>
@@ -286,24 +283,23 @@ export default function App() {
           <div className="mb-24 overflow-hidden"><div className="animate-marquee">{[...top10Quotes, ...top10Quotes].map((quote, i) => (<div key={`${quote.id}-${i}`} className="w-[350px] px-5"><QuoteCard quote={quote} idx={i % 10} isTop={true} isMini={true} /></div>))}</div></div>
         )}
         <p className="font-black text-stone-200 tracking-[1em] text-[10px] italic uppercase">Archiving the journey of love.</p>
-        <p className="mt-10 font-black text-stone-400 text-xs tracking-widest uppercase">&copy; 2026 あそびラボ me-to</p>
+        <div className="mt-10 flex flex-col items-center gap-4">
+          <p className="font-black text-stone-400 text-xs tracking-widest uppercase flex items-center gap-2">
+            &copy; 2026 あそびラボ me-to
+            {/* フッターにインスタリンクを追加 */}
+            <a href="https://www.instagram.com/asobi_meto/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
+              <Instagram className="w-5 h-5" />
+            </a>
+          </p>
+        </div>
       </footer>
     </div>
   );
 }
 
-// 🚀 本番公開用：root要素へのレンダリング（確実に実行されるように調整）
-function startApp() {
-  const rootElement = document.getElementById('root');
-  if (rootElement) {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(<App />);
-  }
-}
-
-// 画面が読み込まれたら即座に実行
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startApp);
-} else {
-  startApp();
+// 🚀 本番公開用のマウント処理
+const container = document.getElementById('root');
+if (container) {
+  const root = ReactDOM.createRoot(container);
+  root.render(<App />);
 }
