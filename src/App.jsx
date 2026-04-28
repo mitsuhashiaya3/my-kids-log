@@ -84,7 +84,7 @@ export default function App() {
         return () => unsubscribe();
       } catch (e) {
         console.error("Auth Error:", e);
-        showStatus('Firebase設定で「匿名ログイン」を有効にしてください');
+        showStatus('匿名ログインを有効にしてください');
       }
     };
     initApp();
@@ -105,7 +105,7 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      showStatus('認証待ちです。少し待ってもう一度押してください');
+      showStatus('認証待ちです...');
       return;
     }
     if (!newQuote.content || !newQuote.meaning || !newQuote.name) {
@@ -193,10 +193,11 @@ export default function App() {
                 <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-11 h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className={`w-4 h-4 ${isHearted ? 'fill-current' : ''}`} /><span className="text-[8px] font-black">{quote.heartCount || 0}</span></button>
                 <button onClick={() => setDeleteConfirmId(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
                 <button onClick={() => handleDownloadImage(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-4 h-4" /></button>
+                {/* 修正：カード上のボタンは X に戻す */}
                 <button onClick={() => {
                   const text = `#いいまつがいじてん 「${quote.content}」（意味：${quote.meaning}）`;
                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-                }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center"><XIcon /></button>
+                }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-stone-900 flex items-center justify-center transition-colors"><XIcon /></button>
               </>
             ) : (
               <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-9 h-9 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-9 h-9 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
@@ -220,7 +221,7 @@ export default function App() {
         .color-bar-left { top: 0; bottom: 0; left: 0; width: 8px; flex-direction: column; }
         .color-bar-right { top: 0; bottom: 0; right: 0; width: 8px; flex-direction: column; }
         .color-segment { flex: 1; }
-        /* ロゴアニメーションをポップ＆高速化 */
+        /* ロゴアニメーションをポップ＆高速化 (2.5s周期, scale1.1) */
         .title-char { display: inline-block; animation: titleFloat 2.5s ease-in-out infinite; }
         @keyframes titleFloat {
           0%, 100% { transform: translateY(0) scale(1); }
@@ -243,7 +244,11 @@ export default function App() {
           <h1 className="text-3xl md:text-4xl font-black tracking-[0.6em] text-black">{"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.15}s` }}>{char}</span>)}</h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-4 uppercase tracking-[0.6em]">Shared Heart Archive</span>
         </div>
-        <div className="border-[2.5px] border-black rounded-[2.5rem] p-6 px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative"><p className="text-[9px] font-bold text-stone-400 mb-3 uppercase tracking-widest">Archive for Us</p><p className="text-base font-black tracking-widest">「たのしい成長」を</p><p className="text-base font-black mt-1 tracking-widest">のこそう</p></div>
+        <div className="border-[2.5px] border-black rounded-[2.5rem] p-6 px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative">
+          <p className="text-[9px] font-bold text-stone-400 mb-3 uppercase tracking-widest">Archive for Us</p>
+          <p className="text-base font-black tracking-widest">「たのしい成長」を</p>
+          <p className="text-base font-black mt-1 tracking-widest">のこそう</p>
+        </div>
       </header>
 
       <div className="sticky top-0 z-40 bg-[#FCFAF7]/80 backdrop-blur-md border-y border-stone-100 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-5 flex justify-center items-center gap-6"><span className="text-[10px] font-black tracking-widest text-stone-300 uppercase">絞り込み</span><nav className="flex gap-4 overflow-x-auto no-scrollbar">{CATEGORIES.map(cat => (<button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-8 py-3 rounded-full text-xs font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-black hover:text-black`}`}>{cat.label}</button>))}</nav></div></div>
@@ -290,6 +295,7 @@ export default function App() {
         <div className="mt-10 flex flex-col items-center gap-4">
           <div className="font-black text-stone-400 text-xs tracking-widest uppercase flex items-center gap-2">
             &copy; 2026 あそびラボ me-to
+            {/* 💡 Instagramリンクはここに配置 */}
             <a href="https://www.instagram.com/asobi_meto/" target="_blank" rel="noopener noreferrer" className="ml-2 text-stone-400 hover:text-fuchsia-500 transition-colors">
               <Instagram className="w-5 h-5" />
             </a>
