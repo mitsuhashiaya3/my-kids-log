@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, Timestamp, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
@@ -44,13 +45,14 @@ export default function App() {
     name: '', category: 'toddler', ageYears: '2', ageMonths: '0', content: '', meaning: '', context: ''
   });
 
-  // ファビコンと外部ライブラリの設定
+  // SVGファビコンとライブラリ読み込み
   useEffect(() => {
-    // ファビコン設定（kids-log/favicon.svgを読み込み）
-    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+    // --- 💡 SVGファビコンを動的に設定 ---
+    const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#FF5A5F"/><text x="50" y="65" font-family="Arial" font-size="40" text-anchor="middle" fill="white" font-weight="bold">!</text></svg>`;
+    const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/svg+xml';
     link.rel = 'icon';
-    link.href = '/kids-log/favicon.svg';
+    link.href = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
     document.getElementsByTagName('head')[0].appendChild(link);
 
     if (window.htmlToImage) return;
@@ -60,19 +62,12 @@ export default function App() {
     document.body.appendChild(script);
   }, []);
 
-  // Auth & Firestore接続
+  // Auth & Firestore
   useEffect(() => {
-    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-      setStatusMessage('FirebaseのAPIキーを設定してください');
-      return;
-    }
     const initAuth = async () => {
       try {
         await signInAnonymously(auth);
-      } catch (e) { 
-        console.error("Auth error:", e);
-        showStatus('ログインエラーが発生しました');
-      }
+      } catch (e) { console.error("Auth error:", e); }
     };
     initAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
@@ -83,7 +78,7 @@ export default function App() {
           const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
           setQuotes(data);
-        });
+        }, (err) => console.error("Firestore error:", err));
         return () => unsubscribeSnapshot();
       }
     });
@@ -108,7 +103,7 @@ export default function App() {
       showStatus('認証待ちです...もう一度押してください');
       return;
     }
-    // 入力チェック（エピソード以外を必須に）
+    // 必須入力チェック（contextエピソードは任意）
     if (!newQuote.content || !newQuote.meaning || !newQuote.name) {
       showStatus('「お名前」「内容」「意味」をすべて入力してください');
       return;
@@ -123,10 +118,10 @@ export default function App() {
       });
       setNewQuote({ ...newQuote, content: '', meaning: '', context: '' });
       setIsModalOpen(false);
-      showStatus('記録しました！');
+      showStatus('きろくしました！');
     } catch (e) { 
       console.error(e);
-      showStatus('保存に失敗しました。');
+      showStatus('保存に失敗しました');
     }
   };
 
@@ -135,7 +130,7 @@ export default function App() {
     const element = cardRefs.current[id];
     if (!element) return;
     setIsExporting(id);
-    showStatus('生成中...');
+    showStatus('画像を生成中...');
     setTimeout(async () => {
       try {
         const dataUrl = await window.htmlToImage.toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
@@ -148,7 +143,7 @@ export default function App() {
     }, 500);
   };
 
-  const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 4000); };
+  const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 3000); };
 
   const filteredQuotes = useMemo(() => filter === 'all' ? quotes : quotes.filter(q => q.category === filter), [quotes, filter]);
   const visibleQuotes = useMemo(() => filteredQuotes.slice(0, displayCount), [filteredQuotes, displayCount]);
@@ -179,9 +174,7 @@ export default function App() {
               </div>
             )}
           </div>
-          {/* エピソード表示 */}
           {!isMini && quote.context && <div className="mb-8 p-5 bg-stone-50/50 rounded-2xl border-l-4 border-stone-100 text-sm text-stone-500 tracking-wide leading-relaxed">{quote.context}</div>}
-          
           <div className="pt-6 border-t border-stone-50 flex items-end justify-between">
             <div className="space-y-1"><span className="text-[10px] font-black text-stone-200 block uppercase tracking-widest">Name</span><span className="text-lg font-black tracking-widest text-stone-900 border-b-2 border-stone-100">{quote.name || 'ななしさん'}</span></div>
             <div className="text-right space-y-0.5">
@@ -195,7 +188,7 @@ export default function App() {
                 <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-11 h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className={`w-4 h-4 ${isHearted ? 'fill-current' : ''}`} /><span className="text-[8px] font-black">{quote.heartCount || 0}</span></button>
                 <button onClick={() => setDeleteConfirmId(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
                 <button onClick={() => handleDownloadImage(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-4 h-4" /></button>
-                <button onClick={() => { window.open('https://instagram.com', '_blank') }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-fuchsia-500 flex items-center justify-center transition-colors"><Instagram className="w-4 h-4" /></button>
+                <button onClick={() => { window.open('https://instagram.com', '_blank') }} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-fuchsia-500 flex items-center justify-center"><Instagram className="w-4 h-4" /></button>
               </>
             ) : (
               <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-9 h-9 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-9 h-9 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
@@ -227,7 +220,7 @@ export default function App() {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       `}</style>
 
-      {/* 4辺カラーフレーム（20:20:17のデザイン） */}
+      {/* デザイン復元：4辺フレーム */}
       <div className="color-bar-frame color-bar-top">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-bottom">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
@@ -250,8 +243,7 @@ export default function App() {
         {filteredQuotes.length > displayCount && <div className="flex justify-center mt-20"><button onClick={() => setDisplayCount(prev => prev + 12)} className="bg-white border-2 border-stone-100 px-16 py-6 rounded-full font-black text-stone-400 hover:border-black hover:text-black transition-all tracking-widest">もっと見る</button></div>}
       </main>
 
-      {/* 追加ボタン */}
-      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest uppercase mt-1">追加する</span></button>
+      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest mt-1">追加する</span></button>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xl flex items-center justify-center z-[60] p-6 overflow-y-auto">
@@ -261,13 +253,13 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-8">
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">時期</label><div className="grid grid-cols-2 gap-3">{CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-6 text-xs font-black border-2 rounded-2xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}</div></div>
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お子さまのお名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">年齢</label><div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div></div>
                 </div>
                 <div className="space-y-8">
                   <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] tracking-widest uppercase">いいまつがい</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-48 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
                   <div className="space-y-3"><label className="text-xs font-black text-[#0099cc] tracking-widest uppercase">ほんとうの意味</label><input required type="text" placeholder="意味..." className="w-full border-b-2 p-4 text-xl font-black focus:border-[#0099cc] outline-none transition-colors" value={newQuote.meaning} onChange={e => setNewQuote({...newQuote, meaning: e.target.value})} /></div>
-                  {/* --- 復活したエピソード欄 --- */}
+                  {/* エピソード入力欄を復活 */}
                   <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">エピソード（背景）</label><textarea placeholder="どんな時に言った？（任意）" className="w-full bg-stone-50 border-2 rounded-2xl p-4 text-sm font-medium focus:bg-white outline-none h-24 resize-none transition-all" value={newQuote.context} onChange={e => setNewQuote({...newQuote, context: e.target.value})} /></div>
                 </div>
               </div>
@@ -288,4 +280,12 @@ export default function App() {
       </footer>
     </div>
   );
+}
+
+// 🚀 本番公開用（Vite環境等）の描画命令
+// root要素を見つけたらその場で描画します
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
 }
