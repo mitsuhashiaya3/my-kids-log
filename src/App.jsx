@@ -126,9 +126,20 @@ export default function App() {
     setIsExporting(id);
     showStatus('画像を生成中...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
       if (document.fonts) await document.fonts.ready;
-      const dataUrl = await window.htmlToImage.toPng(element, { backgroundColor: '#ffffff', pixelRatio: 3, cacheBust: true });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const dataUrl = await window.htmlToImage.toPng(element, { 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2, 
+        cacheBust: true,
+        style: {
+          transform: 'scale(1)',
+        }
+      });
+      
+      if (!dataUrl || dataUrl.length < 1000) throw new Error('Generation failed');
+
       const link = document.createElement('a');
       link.download = `iimatsugai-${id}.png`;
       link.href = dataUrl;
@@ -136,7 +147,10 @@ export default function App() {
       link.click();
       document.body.removeChild(link);
       showStatus('保存しました！');
-    } catch (err) { console.error(err); showStatus('失敗しました'); } finally { setIsExporting(null); }
+    } catch (err) { 
+      console.error(err); 
+      showStatus('保存に失敗しました。もう一度お試しください'); 
+    } finally { setIsExporting(null); }
   };
 
   const showStatus = (msg) => { setStatusMessage(msg); setTimeout(() => setStatusMessage(''), 4000); };
@@ -172,9 +186,15 @@ export default function App() {
           </div>
           {!isMini && quote.context && <div className="mb-8 p-5 bg-stone-50/50 rounded-2xl border-l-4 border-stone-100 text-sm text-stone-500 tracking-wide leading-relaxed">{quote.context}</div>}
           <div className="pt-6 border-t border-stone-50 flex items-end justify-between">
-            <div className="space-y-1"><span className="text-[10px] font-black text-stone-200 block uppercase tracking-widest">Name</span><span className="text-lg font-black tracking-widest text-stone-900 border-b-2 border-stone-100">{quote.name || 'ななしさん'}</span></div>
+            <div className="space-y-1"><span className="text-[10px] font-black text-stone-200 block uppercase tracking-widest">Name</span>
+              {/* 🚀 下線を復活 */}
+              <span className="text-lg font-black tracking-widest text-stone-900 border-b-2 border-stone-100">{quote.name || 'ななしさん'}</span></div>
             <div className="text-right space-y-0.5">
-              <div className="flex items-baseline justify-end gap-1 font-black text-xl tracking-tighter"><span className={catInfo.text}>{quote.ageYears}</span><span className="text-[12px] text-stone-200">歳</span><span className={`${catInfo.text} ml-1`}>{quote.ageMonths}</span><span className="text-[12px] text-stone-200">ヶ月</span></div>
+              {/* 🚀 下線を復活 */}
+              <div className="flex items-baseline justify-end gap-1 font-black text-xl tracking-tighter border-b-2 border-stone-100">
+                <span className={catInfo.text}>{quote.ageYears}</span><span className="text-[12px] text-stone-200">歳</span>
+                <span className={`${catInfo.text} ml-1`}>{quote.ageMonths}</span><span className="text-[12px] text-stone-200">ヶ月</span>
+              </div>
               <div className="text-[10px] font-bold text-stone-200 uppercase tracking-widest">{quote.createdAt?.toDate().toLocaleDateString('ja-JP').replace(/\//g, '.')}</div>
             </div>
           </div>
@@ -200,18 +220,15 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden pt-4 sm:pt-8">
+    <div className="min-h-screen bg-[#FCFAF7] font-sans text-stone-800 pb-20 relative overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Noto+Sans+JP:wght@900&display=swap');
         
-        /* 🚀 全体フォント：PCでもスマホのような極太にする設定 */
         body { 
           font-family: 'Noto Sans JP', sans-serif;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
           text-rendering: optimizeLegibility;
-          /* PC Chrome用の太さブースト（隠し味） */
-          -webkit-text-stroke: 0.35px black;
         }
 
         .exporting .action-btn { display: none !important; }
@@ -223,7 +240,6 @@ export default function App() {
         .color-bar-right { top: 0; bottom: 0; right: 0; width: 10px; flex-direction: column; }
         .color-segment { flex: 1; }
         
-        /* タイトルアニメーション：上が切れないよう少し控えめに、かつポップに */
         .title-char { display: inline-block; animation: titlePop 2s ease-in-out infinite; }
         @keyframes titlePop {
           0%, 100% { transform: translateY(0) scale(1); }
@@ -242,10 +258,9 @@ export default function App() {
       <div className="color-bar-frame color-bar-left">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       <div className="color-bar-frame color-bar-right">{COLORS.map((c, i) => <div key={i} className="color-segment" style={{ backgroundColor: c }} />)}</div>
       
-      {/* 🚀 ヘッダー：上が切れないよう pt を増やし、タイトルを大きく */}
-      <header className="pt-28 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
+      <header className="pt-32 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
         <div className="flex flex-col items-center md:items-start w-full">
-          <h1 className="text-[7.8vw] sm:text-5xl md:text-6xl font-black tracking-tighter sm:tracking-[0.3em] text-black whitespace-nowrap leading-none">
+          <h1 className="text-[8vw] sm:text-5xl md:text-6xl font-black tracking-tighter sm:tracking-[0.3em] text-black whitespace-nowrap leading-none">
             {"いいまつがいじてん".split("").map((char, i) => <span key={i} className="title-char" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>)}
           </h1>
           <span className="text-[10px] font-black tracking-[0.4em] text-stone-200 mt-6 uppercase">Shared Heart Archive</span>
@@ -262,7 +277,7 @@ export default function App() {
           <span className="hidden sm:inline text-[10px] font-black tracking-widest text-stone-300 uppercase">絞り込み</span>
           <nav className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {CATEGORIES.map(cat => (
-              <button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-6 py-3 rounded-full text-[11px] font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-black hover:text-black`}`}>{cat.label}</button>
+              <button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-6 py-3 rounded-full text-[11px] font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-stone-400`}`}>{cat.label}</button>
             ))}
           </nav>
         </div>
@@ -273,7 +288,6 @@ export default function App() {
           <div className="relative inline-block w-full max-w-xl md:max-w-none">
             <div className="bg-white border-[2.5px] border-black rounded-[2.2rem] px-6 py-8 md:px-12 md:py-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.03)]">
               <h2 className="text-[1.25rem] sm:text-2xl font-black text-black flex items-center justify-center md:justify-start gap-4 md:gap-8 tracking-widest leading-tight">
-                {/* 🚀 キラキラアイコンをスマホでもガッツリ大きく */}
                 <Sparkles className="w-10 h-10 md:w-12 md:h-12 text-[#FFD100] shrink-0" strokeWidth={2.5} />
                 <span>あなたの大切な言葉を記録しよう</span>
               </h2>
