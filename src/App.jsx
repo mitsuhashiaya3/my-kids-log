@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, Timestamp, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Download, Crown } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, X, Quote, Heart, Sparkles, Star, Check, RotateCcw, Download, Instagram, Crown } from 'lucide-react';
 
 // --- 🔑 重要：ここをご自身のFirebase設定（19.04.14.jpgの内容）に書き換えてください ---
 const firebaseConfig = {
@@ -20,7 +20,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// カテゴリー設定
 const CATEGORIES = [
   { id: 'all', label: 'すべて', bg: 'bg-[#1a1a1a]', border: 'border-stone-800', lightBg: 'bg-stone-50', text: 'text-stone-800' },
   { id: 'baby', label: '0〜1歳', bg: 'bg-[#e94e38]', border: 'border-[#e94e38]', lightBg: 'bg-[#fff5f4]', text: 'text-[#e94e38]' },
@@ -46,7 +45,6 @@ export default function App() {
     name: '', category: 'toddler', ageYears: '2', ageMonths: '0', content: '', meaning: '', context: ''
   });
 
-  // 画像保存ライブラリ読み込み
   useEffect(() => {
     if (window.htmlToImage) return;
     const script = document.createElement('script');
@@ -55,7 +53,6 @@ export default function App() {
     document.body.appendChild(script);
   }, []);
 
-  // Auth & Firestore接続
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -92,7 +89,14 @@ export default function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newQuote.content || !newQuote.meaning) return;
+    if (!user) {
+      showStatus('ログインを待っています...');
+      return;
+    }
+    if (!newQuote.content || !newQuote.meaning || !newQuote.name) {
+      showStatus('すべて入力してください');
+      return;
+    }
     try {
       await addDoc(collection(db, 'quotes'), {
         ...newQuote, userId: user.uid, heartCount: 0, heartedBy: [], createdAt: Timestamp.now()
@@ -100,7 +104,10 @@ export default function App() {
       setNewQuote({ ...newQuote, content: '', meaning: '', context: '' });
       setIsModalOpen(false);
       showStatus('記録しました！');
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e);
+      showStatus('保存に失敗しました。ルールの設定を確認してください');
+    }
   };
 
   const handleDownloadImage = async (id) => {
@@ -165,6 +172,7 @@ export default function App() {
                 <button onClick={() => handleHeart(quote.id, quote.heartedBy)} className={`w-11 h-11 rounded-full border flex flex-col items-center justify-center transition-all ${isHearted ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-stone-300 hover:border-stone-400'}`}><Heart className={`w-4 h-4 ${isHearted ? 'fill-current' : ''}`} /><span className="text-[8px] font-black">{quote.heartCount || 0}</span></button>
                 <button onClick={() => setDeleteConfirmId(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-200 hover:text-red-500 flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
                 <button onClick={() => handleDownloadImage(quote.id)} className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-rose-400 flex items-center justify-center"><Download className="w-4 h-4" /></button>
+                <button className="w-10 h-10 bg-white rounded-full border text-stone-300 hover:text-fuchsia-500 flex items-center justify-center"><Instagram className="w-4 h-4" /></button>
               </>
             ) : (
               <div className="flex flex-col items-end gap-2 animate-in zoom-in-95"><span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded shadow-lg">消去?</span><div className="flex gap-2"><button onClick={() => { deleteDoc(doc(db, 'quotes', quote.id)); setDeleteConfirmId(null); showStatus('削除しました'); }} className="w-9 h-9 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><Check className="w-4 h-4" /></button><button onClick={() => setDeleteConfirmId(null)} className="w-9 h-9 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center shadow-md"><RotateCcw className="w-4 h-4" /></button></div></div>
@@ -210,33 +218,32 @@ export default function App() {
         <div className="border-[2.5px] border-black rounded-[2.5rem] p-6 px-10 text-center bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] relative"><p className="text-[9px] font-bold text-stone-400 mb-3 uppercase tracking-widest">Archive for Us</p><p className="text-base font-black tracking-widest">「たのしい成長」を</p><p className="text-base font-black mt-1 tracking-widest">のこしたい</p></div>
       </header>
 
-      <div className="sticky top-0 z-40 bg-[#FCFAF7]/80 backdrop-blur-md border-y border-stone-100 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-5 flex justify-center items-center gap-6"><span className="text-[10px] font-black tracking-widest text-stone-300">FILTER</span><nav className="flex gap-4 overflow-x-auto no-scrollbar">{CATEGORIES.map(cat => (<button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-8 py-3 rounded-full text-xs font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-black hover:text-black`}`}>{cat.label}</button>))}</nav></div></div>
+      <div className="sticky top-0 z-40 bg-[#FCFAF7]/80 backdrop-blur-md border-y border-stone-100 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-5 flex justify-center items-center gap-6"><span className="text-[10px] font-black tracking-widest text-stone-300 uppercase">Filter</span><nav className="flex gap-4 overflow-x-auto no-scrollbar">{CATEGORIES.map(cat => (<button key={cat.id} onClick={() => setFilter(cat.id)} className={`px-8 py-3 rounded-full text-xs font-black border-2 transition-all tracking-widest whitespace-nowrap ${filter === cat.id ? `${cat.bg} text-white border-transparent shadow-lg` : `text-stone-400 border-stone-100 hover:border-black hover:text-black`}`}>{cat.label}</button>))}</nav></div></div>
 
       <main className="max-w-7xl mx-auto px-8 py-20">
-        {/* 20:20:17の巨大吹き出し */}
         <div className="mb-24 flex flex-col items-center md:items-start"><div className="relative inline-block"><div className="bg-white border-[2.5px] border-black rounded-[2.2rem] px-12 py-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.03)]"><h2 className="text-2xl font-black text-black flex items-center gap-6 tracking-widest"><Sparkles className="w-6 h-6 text-[#FFD100]" />あなたの大切な言葉を記録しよう</h2></div><div className="fukidashi-tip"></div><div className="fukidashi-tip-inner"></div></div></div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">{visibleQuotes.map((quote, idx) => <QuoteCard key={quote.id} quote={quote} idx={idx} />)}</div>
         {filteredQuotes.length > displayCount && <div className="flex justify-center mt-20"><button onClick={() => setDisplayCount(prev => prev + 12)} className="bg-white border-2 border-stone-100 px-16 py-6 rounded-full font-black text-stone-400 hover:border-black hover:text-black transition-all tracking-widest">もっと見る</button></div>}
       </main>
 
-      {/* 20:20:17の追加ボタン */}
-      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest uppercase mt-1">追加する</span></button>
+      {/* 追加ボタン */}
+      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-12 right-12 w-24 h-24 bg-[#FF5A5F] text-white rounded-full flex flex-col items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border-[6px] border-white"><Plus className="w-11 h-11" /><span className="text-[10px] font-black tracking-widest mt-1">追加する</span></button>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xl flex items-center justify-center z-[60] p-6 overflow-y-auto">
           <div className="bg-white w-full max-w-4xl border-[3.5px] border-black rounded-[3rem] shadow-2xl my-auto">
-            <div className="flex justify-between items-center border-b-2 p-10"><h2 className="text-2xl font-black tracking-widest uppercase">New Record</h2><button onClick={() => setIsModalOpen(false)} className="p-2 text-stone-300 hover:text-black transition-all"><X className="w-10 h-10" /></button></div>
+            <div className="flex justify-between items-center border-b-2 p-10"><h2 className="text-2xl font-black tracking-widest uppercase">きろくをのこす</h2><button onClick={() => setIsModalOpen(false)} className="p-2 text-stone-300 hover:text-black transition-all"><X className="w-10 h-10" /></button></div>
             <form onSubmit={handleSubmit} className="p-10 space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-8">
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 uppercase tracking-widest">Category</label><div className="grid grid-cols-2 gap-3">{CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-6 text-xs font-black border-2 rounded-2xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}</div></div>
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 uppercase tracking-widest">Name</label><input type="text" placeholder="お名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
-                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 uppercase tracking-widest">Age</label><div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">時期</label><div className="grid grid-cols-2 gap-3">{CATEGORIES.filter(c => c.id !== 'all').map(cat => (<button key={cat.id} type="button" onClick={() => setNewQuote({...newQuote, category: cat.id})} className={`p-6 text-xs font-black border-2 rounded-2xl transition-all ${newQuote.category === cat.id ? `${cat.bg} text-white border-transparent shadow-md` : 'bg-white text-stone-300 border-stone-50 hover:border-stone-400'}`}>{cat.label}</button>))}</div></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">お名前</label><input type="text" placeholder="お名前" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#FF5A5F] outline-none" value={newQuote.name} onChange={e => setNewQuote({...newQuote, name: e.target.value})} /></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-stone-300 tracking-widest uppercase">年齢</label><div className="flex items-center gap-4"><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageYears} onChange={e => setNewQuote({...newQuote, ageYears: e.target.value})} /><span>歳</span><input type="number" className="w-20 border-b-2 p-4 text-xl font-black outline-none" value={newQuote.ageMonths} onChange={e => setNewQuote({...newQuote, ageMonths: e.target.value})} /><span>ヶ月</span></div></div>
                 </div>
                 <div className="space-y-8">
-                  <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] uppercase tracking-widest">Quote</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-48 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
-                  <div className="space-y-3"><label className="text-xs font-black text-[#0099cc] uppercase tracking-widest">Meaning</label><input required type="text" placeholder="ほんとうの意味" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#0099cc] outline-none transition-colors" value={newQuote.meaning} onChange={e => setNewQuote({...newQuote, meaning: e.target.value})} /></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-[#e94e38] tracking-widest uppercase">いいまつがい</label><textarea required placeholder="なんて言った？" className="w-full bg-stone-50 border-2 rounded-3xl p-8 text-2xl font-black focus:bg-white outline-none h-48 resize-none transition-all leading-relaxed" value={newQuote.content} onChange={e => setNewQuote({...newQuote, content: e.target.value})} /></div>
+                  <div className="space-y-3"><label className="text-xs font-black text-[#0099cc] tracking-widest uppercase">ほんとうの意味</label><input required type="text" placeholder="ほんとうの意味" className="w-full border-b-2 p-4 text-xl font-black focus:border-[#0099cc] outline-none transition-colors" value={newQuote.meaning} onChange={e => setNewQuote({...newQuote, meaning: e.target.value})} /></div>
                 </div>
               </div>
               <button type="submit" className="w-full py-8 text-xl font-black bg-[#FF5A5F] text-white rounded-full shadow-xl hover:brightness-110 active:scale-[0.98] transition-all uppercase tracking-widest">きろくをのこす</button>
@@ -258,7 +265,7 @@ export default function App() {
   );
 }
 
-// --- 🚀 本番公開用（Viteサーバー等）の表示命令 ---
+// 描画命令（サーバー環境用）
 const rootElement = document.getElementById('root');
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
